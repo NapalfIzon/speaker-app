@@ -1,91 +1,135 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from './page.module.css'
+"use client";
+import "regenerator-runtime/runtime";
 
-const inter = Inter({ subsets: ['latin'] })
+import { useEffect, useRef, useState } from "react";
+import { Button } from "react-bootstrap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
+import { faMicrophone } from "@fortawesome/free-solid-svg-icons";
+
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./page.scss";
 
 export default function Home() {
+  const commands: ReadonlyArray<any> = [
+    {
+      command: "borrar",
+      callback: () => {
+        resetTranscript();
+      },
+    },
+    ,
+    {
+      command: "detener",
+      callback: () => {
+        stopHandle();
+      },
+    },
+  ];
+
+  const { transcript, resetTranscript } = useSpeechRecognition({ commands });
+  const [isListening, setIsListening] = useState(false);
+  const [speechRecognitionSupported, setSpeechRecognitionSupported] =
+    useState(false);
+  const microphoneRef = useRef<any>(null);
+
+  useEffect(() => {
+    const browserSupportsSpeechRecognition =
+      SpeechRecognition.browserSupportsSpeechRecognition();
+    setSpeechRecognitionSupported(browserSupportsSpeechRecognition);
+  }, []);
+
+  const handleListing = () => {
+    setIsListening(true);
+    microphoneRef.current?.classList.add("listening");
+    SpeechRecognition.startListening({
+      continuous: true,
+    });
+  };
+
+  const stopHandle = () => {
+    setIsListening(false);
+    microphoneRef.current?.classList.remove("listening");
+    SpeechRecognition.stopListening();
+  };
+
+  const handleReset = () => {
+    stopHandle();
+    resetTranscript();
+  };
+
+  const handleRead = () => {
+    const utterance = new SpeechSynthesisUtterance();
+    utterance.text = transcript;
+    utterance.lang = "ca";
+    window.speechSynthesis.speak(utterance);
+  };
+
+  if (!speechRecognitionSupported) {
+    return (
+      <div className="mircophone-container">
+        Browser is not Support Speech Recognition.
+      </div>
+    );
+  }
+
+  if (transcript.includes("detente")) {
+    stopHandle();
+  }
+
+  if (transcript.includes("borrar")) {
+    resetTranscript();
+  }
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main>
+      <div className="microphone-wrapper">
+        <div className="microphone-container">
+          <div
+            className="microphone-icon-container"
+            ref={microphoneRef}
+            onClick={handleListing}
           >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            <FontAwesomeIcon className="microphone-icon" icon={faMicrophone} />
+          </div>
+          <div className="microphone-status">
+            {isListening ? "Listening........." : "Click to start Listening"}
+          </div>
+          {isListening ? (
+            <Button
+              className="microphone-stop btn"
+              variant="danger"
+              onClick={stopHandle}
+            >
+              Stop
+            </Button>
+          ) : null}
         </div>
-      </div>
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-        <div className={styles.thirteen}>
-          <Image src="/thirteen.svg" alt="13" width={40} height={31} priority />
-        </div>
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+        {transcript ? (
+          <div className="microphone-result-container">
+            <div className="microphone-result-text">{transcript}</div>
+            <div className="microphone-result-buttons">
+              <Button
+                className="microphone-result-action_button btn"
+                variant="success"
+                onClick={handleReset}
+              >
+                Reset
+              </Button>
+              <Button
+                className="microphone-result-action_button btn"
+                variant="warning"
+                onClick={handleRead}
+              >
+                Read text
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </main>
-  )
+  );
 }
