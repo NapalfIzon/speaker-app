@@ -2,12 +2,13 @@
 import "regenerator-runtime/runtime";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "react-bootstrap";
+import { Button, Dropdown, Placeholder, DropdownButton } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { faMicrophone } from "@fortawesome/free-solid-svg-icons";
+import { Language, LanguageNames, translation } from "./language/languages";
 
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./page.scss";
@@ -20,7 +21,6 @@ export default function Home() {
         resetTranscript();
       },
     },
-    ,
     {
       command: "detener",
       callback: () => {
@@ -28,12 +28,19 @@ export default function Home() {
       },
     },
   ];
-
   const { transcript, resetTranscript } = useSpeechRecognition({ commands });
-  const [isListening, setIsListening] = useState(false);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [language, setLanguage] = useState<Language>({
+    language: "es",
+    isSelected: false,
+  });
+  const translations = translation[language.language];
   const [speechRecognitionSupported, setSpeechRecognitionSupported] =
     useState(false);
   const microphoneRef = useRef<any>(null);
+  const languageTypes = Object.keys(LanguageNames);
+  const languageName =
+    Object.values(LanguageNames)[languageTypes.indexOf(language.language)];
 
   useEffect(() => {
     const browserSupportsSpeechRecognition =
@@ -46,6 +53,7 @@ export default function Home() {
     microphoneRef.current?.classList.add("listening");
     SpeechRecognition.startListening({
       continuous: true,
+      language: language.language,
     });
   };
 
@@ -63,23 +71,40 @@ export default function Home() {
   const handleRead = () => {
     const utterance = new SpeechSynthesisUtterance();
     utterance.text = transcript;
-    utterance.lang = "ca";
+    utterance.lang = language.language;
+    utterance.rate = 0.75;
     window.speechSynthesis.speak(utterance);
+  };
+
+  const handleLanguage = (event: any): void => {
+    if (event.target.id.length > 0) {
+      handleReset();
+
+      setLanguage({ language: event.target.id, isSelected: true });
+    }
   };
 
   if (!speechRecognitionSupported) {
     return (
-      <div className="mircophone-container">
-        Browser is not Support Speech Recognition.
+      <div className="microphone-container">
+        <Placeholder.Button variant="secondary" xs={3} />
+        <Placeholder
+          as="div"
+          className="microphone-icon-container"
+          animation="wave"
+        />
+        <Placeholder as="div" className="microphone-status" animation="wave">
+          <Placeholder xs={12} bg="light" />
+        </Placeholder>
       </div>
     );
   }
 
-  if (transcript.includes("detente")) {
+  if (transcript.includes(translations.stop)) {
     stopHandle();
   }
 
-  if (transcript.includes("borrar")) {
+  if (transcript.includes(translations.reset)) {
     resetTranscript();
   }
 
@@ -87,6 +112,27 @@ export default function Home() {
     <main>
       <div className="microphone-wrapper">
         <div className="microphone-container">
+          <DropdownButton
+            className="microphone-language"
+            drop="down-centered"
+            variant="secondary"
+            title={
+              language.isSelected ? languageName : translations.languageSelector
+            }
+            onClick={handleLanguage}
+          >
+            {languageTypes.map((languageId, index) => {
+              const languageIndex =
+                Object.keys(LanguageNames).indexOf(languageId);
+              const languageName = Object.values(LanguageNames)[languageIndex];
+
+              return (
+                <Dropdown.Item key={index} id={languageId}>
+                  {languageName}
+                </Dropdown.Item>
+              );
+            })}
+          </DropdownButton>
           <div
             className="microphone-icon-container"
             ref={microphoneRef}
@@ -95,7 +141,9 @@ export default function Home() {
             <FontAwesomeIcon className="microphone-icon" icon={faMicrophone} />
           </div>
           <div className="microphone-status">
-            {isListening ? "Listening........." : "Click to start Listening"}
+            {isListening
+              ? translations.listening
+              : translations.readyToListening}
           </div>
           {isListening ? (
             <Button
@@ -103,7 +151,7 @@ export default function Home() {
               variant="danger"
               onClick={stopHandle}
             >
-              Stop
+              {translations.stop}
             </Button>
           ) : null}
         </div>
@@ -114,17 +162,19 @@ export default function Home() {
             <div className="microphone-result-buttons">
               <Button
                 className="microphone-result-action_button btn"
-                variant="success"
+                variant={isListening ? "secondary" : "success"}
+                disabled={isListening}
                 onClick={handleReset}
               >
-                Reset
+                {translations.reset}
               </Button>
               <Button
                 className="microphone-result-action_button btn"
-                variant="warning"
+                variant={isListening ? "secondary" : "warning"}
+                disabled={isListening}
                 onClick={handleRead}
               >
-                Read text
+                {translations.read}
               </Button>
             </div>
           </div>
